@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
-import re
-import requests
-import time
+import re, requests, sys, time
 
 # TODO: cli input: choose between raw sequence, sequence in fasta file, sequence from ncib accession number (gi number works too)
 # TODO: decide the best way to structure cli option formatting
