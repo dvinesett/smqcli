@@ -6,15 +6,12 @@ import requests
 import sys
 import time
 
-# TODO: cli input: choose between raw sequence, sequence in fasta file, sequence from ncib accession number (gi number works too)
 # TODO: translate nucleotides to protien (all 6 frames) for querying similar to tblastn
 # TODO: output option for saving results file
 # TODO: output option for displaying results, output delimiter
 
+# maybe add fasta validation or at the very least more friendly errors
 
-def motif_to_regex(raw_motif):
-    motif = re.sub('[Xx]', '.', raw_motif) # X to wildcard
-    return re.compile(motif, re.IGNORECASE)
 
 def main(argv=None):
     parser = argparse.ArgumentParser(
@@ -111,31 +108,45 @@ def main(argv=None):
     motifs = ['VXV','VXXV'] # arg
     accessions = ['ALJ99974', 'AIU94630'] # arg
 
-    # TODO: validate motif
+    # prep motifs
+    compiled_motifs = []
+    for raw_motif in args.motifs.split(','):
+        compiled_motifs.append(motif_to_regex(raw_motif))
 
-    compiled_motifs = [re.compile(motif) for motif in motifs]
+    # prep sequences
+    if args.raw_sequence:
+        count = 0
+        for sequence in split_args(args.raw_sequence):
+            sequences['raw_sequence' + str(count)] = sequence
+            count += 1
+    if args.ifile:
+        for file in split_args(args.ifile):
+            with open(file) as f:
+                fasta = f.read()
+                add_fasta_to_sequences(fasta, sequences)
+    if args.accession:
+        num_accessions = len(accessions)
+        count_accessions = 1
+        print('Will wait 0.5s between each search so entrez server doesn\'t get angry')
+        for an in split_args(args.accession):
+            url = 'http://www.ncbi.nlm.nih.gov' + \
+                  '/sviewer/viewer.cgi?sendto=on&dopt=fasta&val=' + an
+            # TODO: implement error handling for bad url
+            # TODO: refactor request using stdlib
+            fasta = requests.get(url).text
+            add_fasta_to_sequences(fasta, sequences)
+            print("[%s/%s] %s "%(count_accessions, num_accessions, an))
+            time.sleep(0.5)
+            count_accessions += 1
 
-    print('Will wait 0.5s between each search so entrez server doesn\'t get angry')
-    num_accessions = len(accessions)
-    count_accessions = 1
-    for an in accessions:
-        url = 'http://www.ncbi.nlm.nih.gov' + \
-              '/sviewer/viewer.cgi?sendto=on&dopt=fasta&val=' + an
-        request = requests.get(url) # TODO: refactor using stdlib
-        # TODO: implement error handling for bad url
-        split = request.text.split('\n', 1) # split on first newline
-        sequences[an] = split[1].replace('\n', '')
 
-        for motif in motifs:
-            for hit in motif_to_regex(motif).finditer(sequences[an]):
-                matches.append([an, motif, hit, url])
-                # TODO: replace 'matches' with object
+    #for motif in motifs:
+    #    for hit in motif_to_regex(motif).finditer(sequences[an]):
+    #        matches.append([an, motif, hit, url])
+    #        # TODO: replace 'matches' with object
 
-        print("[%s/%s] %s "%(count_accessions, num_accessions, an))
-        time.sleep(0.5)
-        count_accessions += 1
 
-    print('done looking for hits')
+    print(sequences)
 
     print()
     for match in matches:
@@ -144,14 +155,24 @@ def main(argv=None):
             match[2].group(0), match[3]))
         # TODO: use .format rather than %
 
+def motif_to_regex(raw_motif):
+    motif = re.sub('[Xx]', '.', raw_motif) # X to wildcard
+    return re.compile(motif, re.IGNORECASE)
 
-# http://www.ncbi.nlm.nih.gov/sviewer/viewer.cgi?sendto=on&dopt=fasta&val=940373999
+def split_args(arg_list):
+    if len(arg_list) == 1:
+        return arg_list[0].split(',')
+    return arg_list
+
+def split_fasta(fasta):
+    # split on the first newline
+    return fasta.split('\n', 1)
+
+def add_fasta_to_sequences(fasta, sequences):
+    id = split_fasta(fasta)[0][1:]
+    sequence = split_fasta(fasta)[1].replace('\n', '')
+    sequences[id] = sequence
 
 
 if __name__ == "__main__":
     main()
-
-# questions
-# are nucleotide motifs a thing
-# is there a standard format for the 6 frames of a protien sequence
-#   e.g. ALJ99974.1 - ALF99974.6
