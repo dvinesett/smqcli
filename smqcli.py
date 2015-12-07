@@ -97,16 +97,9 @@ def main(argv=None):
             args.standard is False):
         args.standard = True
 
-    print(args)
-    print()
-
-    motifs = [] # list of unprocessed, unvalidated motifs, input by user
-    accessions = [] # list of unvalidated accession numbers, input by user
     sequences = {} # dictionary where {key: value} is {accession_number: sequence}
     matches = [] # list of lists with information on each match. will refactor into Match class
-
-    motifs = ['VXV','VXXV'] # arg
-    accessions = ['ALJ99974', 'AIU94630'] # arg
+    delimiter = '\t' #TODO: make this an arg
 
     # prep motifs
     compiled_motifs = []
@@ -121,13 +114,16 @@ def main(argv=None):
             count += 1
     if args.ifile:
         for file in split_args(args.ifile):
+            #TODO: check if file exists
             with open(file) as f:
-                fasta = f.read()
-                add_fasta_to_sequences(fasta, sequences)
+                add_fasta_to_sequences(f.read(), sequences)
     if args.accession:
-        num_accessions = len(accessions)
-        count_accessions = 1
-        print('Will wait 0.5s between each search so entrez server doesn\'t get angry')
+        if args.verbose:
+            num_accessions = len(split_args(args.accession))
+            count_accessions = 1
+            print(
+                'Searching entrez for accession number. Will wait 0.5s ' + \
+                'between each search so entrez server doesn\'t get angry')
         for an in split_args(args.accession):
             url = 'http://www.ncbi.nlm.nih.gov' + \
                   '/sviewer/viewer.cgi?sendto=on&dopt=fasta&val=' + an
@@ -135,31 +131,34 @@ def main(argv=None):
             # TODO: refactor request using stdlib
             fasta = requests.get(url).text
             add_fasta_to_sequences(fasta, sequences)
-            print("[%s/%s] %s "%(count_accessions, num_accessions, an))
             time.sleep(0.5)
-            count_accessions += 1
+            if args.verbose:
+                print("[%s/%s] %s "%(count_accessions, num_accessions, an))
+                count_accessions += 1
 
+    for motif in compiled_motifs:
+        for key in sequences.keys():
+            for hit in motif.finditer(sequences[key]):
+                # TODO: replace 'matches' with object
+                matches.append([key, motif, hit])
 
-    #for motif in motifs:
-    #    for hit in motif_to_regex(motif).finditer(sequences[an]):
-    #        matches.append([an, motif, hit, url])
-    #        # TODO: replace 'matches' with object
-
-
-    print(sequences)
-
-    print()
+    print("ID{0}MOTIF{0}HIT{0}LOCATION".format(delimiter))
     for match in matches:
-        print("%s,%s,%s,%s,%s" % (
-            match[0], match[1], match[2].span(),
-            match[2].group(0), match[3]))
-        # TODO: use .format rather than %
+        print(
+            "{1}{0}{2}{0}{3}{0}{4}".format(
+            delimiter,
+            match[0],
+            match[1].pattern,
+            match[2].group(0),
+            match[2].span()))
 
 def motif_to_regex(raw_motif):
+    # X to wildcard
     motif = re.sub('[Xx]', '.', raw_motif) # X to wildcard
     return re.compile(motif, re.IGNORECASE)
 
 def split_args(arg_list):
+    # split args on comma
     if len(arg_list) == 1:
         return arg_list[0].split(',')
     return arg_list
@@ -169,10 +168,11 @@ def split_fasta(fasta):
     return fasta.split('\n', 1)
 
 def add_fasta_to_sequences(fasta, sequences):
-    id = split_fasta(fasta)[0][1:]
-    sequence = split_fasta(fasta)[1].replace('\n', '')
-    sequences[id] = sequence
-
+    for fasta_form in fasta.split('>')[1:]:
+        # split a fasta formatted sequence and store it in data structure
+        id = split_fasta(fasta_form)[0]
+        sequence = split_fasta(fasta_form)[1].replace('\n', '')
+        sequences[id] = sequence
 
 if __name__ == "__main__":
     main()
