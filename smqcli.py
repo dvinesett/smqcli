@@ -154,15 +154,16 @@ def main(argv=None):
                 # TODO: replace 'matches' with object
                 matches.append([key, motif, hit])
 
-    print("ID{0}MOTIF{0}HIT{0}LOCATION".format(delimiter))
-    for match in matches:
-        print(
-            "{1}{0}{2}{0}{3}{0}{4}".format(
-            delimiter,
-            match[0],
-            match[1].pattern,
-            match[2].group(0),
-            match[2].span()))
+    if not args.quiet:
+        print("ID{0}MOTIF{0}HIT{0}LOCATION".format(delimiter))
+        for match in matches:
+            print(
+                "{1}{0}{2}{0}{3}{0}{4}".format(
+                delimiter,
+                match[0],
+                match[1].pattern,
+                match[2].group(0),
+                match[2].span()))
 
 def motif_to_regex(raw_motif):
     # X to wildcard
