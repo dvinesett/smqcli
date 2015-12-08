@@ -154,6 +154,7 @@ def main(argv=None):
                 # TODO: replace 'matches' with object
                 matches.append([key, motif, hit])
 
+    # TODO: add arguments for output format. e.g. --format=id,motif,hit,location
     if not args.quiet:
         print("ID{0}MOTIF{0}HIT{0}LOCATION".format(delimiter))
         for match in matches:
