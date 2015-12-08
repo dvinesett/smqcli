@@ -39,11 +39,11 @@ def main(argv=None):
     option_group.add_argument(
         '-q', '--quiet',
         action='store_true',
-        help='NOT IMPLEMENTED. Suppress stdout.')
+        help='Suppress stdout.')
     option_group.add_argument(
         '-v', '--verbose',
         action='store_true',
-        help='NOT IMPLEMENTED. Output additional information to stdout or stderr.')
+        help='Output additional information to stdout or stderr.')
 
     input_group = parser.add_argument_group(
         title='input group')
