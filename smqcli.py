@@ -120,9 +120,14 @@ def main(argv=None):
             count += 1
     if args.ifile:
         for file in split_args(args.ifile):
-            #TODO: check if file exists
-            with open(file) as f:
-                add_fasta_to_sequences(f.read(), sequences)
+            try:
+                f = open(file)
+            except FileNotFoundError:
+                print('FileNotFoundError on "{0}"'.format(file))
+                sys.exit()
+            else:
+                with f:
+                    add_fasta_to_sequences(f.read(), sequences)
     if args.accession:
         if args.verbose:
             num_accessions = len(split_args(args.accession))
