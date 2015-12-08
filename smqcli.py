@@ -76,6 +76,12 @@ def main(argv=None):
         nargs='*',
         help='NOT IMPLEMENTED. Will output to file in .csv format.',
         metavar='FILENAME')
+    output_group.add_argument(
+        '-d', '--delimiter',
+        default='\t',
+        help='This will be the delimiter for output. Special ' + \
+        ' characters must be escaped. The default is \\t (tab). ' + \
+        'For escaped charcters such as tab, use the syntax $\'\\t\'')
     args = parser.parse_args()
 
     if (args.protien is False and
@@ -99,7 +105,7 @@ def main(argv=None):
 
     sequences = {} # dictionary where {key: value} is {accession_number: sequence}
     matches = [] # list of lists with information on each match. will refactor into Match class
-    delimiter = '\t' #TODO: make this an arg
+    delimiter = args.delimiter
 
     # prep motifs
     compiled_motifs = []
