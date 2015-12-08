@@ -142,6 +142,7 @@ def main(argv=None):
             # TODO: refactor request using stdlib
             fasta = requests.get(url).text
             add_fasta_to_sequences(fasta, sequences)
+            # TODO: add argument for sleep time
             time.sleep(0.5)
             if args.verbose:
                 print("[%s/%s] %s "%(count_accessions, num_accessions, an))
