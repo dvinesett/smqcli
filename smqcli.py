@@ -62,7 +62,7 @@ def main(argv=None):
         '-a', '--accession',
         nargs='*',
         help='GenBank acessions number(s) will be pulled from NCBI. ' + \
-             'GI nubmers (genInfo Identifier)also work. Multiple' + \
+             'GI numbers (genInfo Identifier) also work. Multiple' + \
              'accession numbers should be seperated by commas or spaces.')
 
     output_group = parser.add_argument_group(
