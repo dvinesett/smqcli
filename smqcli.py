@@ -82,9 +82,9 @@ def main(argv=None):
         'For escaped characters such as tab, use the syntax $\'\\t\'')
     args = parser.parse_args()
 
-    if (args.protien is False and
+    if (args.protein is False and
             args.nucleotide is False):
-        args.protien = True
+        args.protein = True
 
     if (args.raw_sequence is None and
             args.ifile is None and
@@ -162,7 +162,6 @@ def main(argv=None):
 
     # TODO: add arguments for output format. e.g. --format=id,motif,hit,location
     if not args.quiet:
-        #print("ID{0}MOTIF{0}HIT{0}START{0}END".format(delimiter))
         for match in matches:
             print(
                 "{1}{0}{2}{0}{3}{0}{4}{0}{5}".format(
