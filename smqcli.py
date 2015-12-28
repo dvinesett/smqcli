@@ -2,9 +2,10 @@
 import argparse
 import getopt
 import re
-import requests
 import sys
 import time
+import urllib.error
+import urllib.request
 
 # TODO: translate nucleotides to protien (all 6 frames) for querying similar to tblastn
 # TODO: output option for saving results file
@@ -136,17 +137,25 @@ def main(argv=None):
                 'Searching entrez for accession number. Will wait 0.5s ' + \
                 'between each search so entrez server doesn\'t get angry')
         for an in split_args(args.accession):
-            url = 'http://www.ncbi.nlm.nih.gov' + \
-                  '/sviewer/viewer.cgi?sendto=on&dopt=fasta&val=' + an
-            # TODO: implement error handling for bad url
-            # TODO: refactor request using stdlib
-            fasta = requests.get(url).text
-            add_fasta_to_sequences(fasta, sequences)
-            # TODO: add argument for sleep time
-            time.sleep(0.5)
-            if args.verbose:
-                print("[%s/%s] %s "%(count_accessions, num_accessions, an))
-                count_accessions += 1
+            url = 'http://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi' + \
+                  '?db=nuccore&rettype=fasta&id=' + an
+            req = urllib.request.Request(url)
+            try: fasta = urllib.request.urlopen(req).read().decode('utf-8')
+            except urllib.error.URLError as e:
+                if args.verbose:
+                    print("error on {0}: {1}".format(an, e.reason))
+                    count_accessions += 1
+            except urllib.error.HTTPError as e:
+                if args.verbose:
+                    print("{0} error on {1}: {2}".format(e.code, an, e.reason))
+                    count_accessions += 1
+            else:
+                add_fasta_to_sequences(fasta, sequences)
+                # TODO: add argument for sleep time
+                time.sleep(0.5)
+                if args.verbose:
+                    print("[%s/%s] %s "%(count_accessions, num_accessions, an))
+                    count_accessions += 1
 
     for motif in compiled_motifs:
         for key in sequences.keys():
