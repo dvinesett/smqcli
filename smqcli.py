@@ -196,9 +196,9 @@ def split_fasta(fasta):
 def add_fasta_to_sequences(fasta, sequences):
     for fasta_form in fasta.split('>')[1:]:
         # split a fasta formatted sequence and store it in data structure
-        id = split_fasta(fasta_form)[0]
+        desc = split_fasta(fasta_form)[0]
         sequence = split_fasta(fasta_form)[1].replace('\n', '')
-        sequences[id] = sequence
+        sequences[desc] = sequence
 
 
 if __name__ == "__main__":
