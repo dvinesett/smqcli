@@ -165,15 +165,16 @@ def main(argv=None):
 
     # TODO: add arguments for output format. e.g. --format=id,motif,hit,location
     if not args.quiet:
-        print("ID{0}MOTIF{0}HIT{0}LOCATION".format(delimiter))
+        #print("ID{0}MOTIF{0}HIT{0}START{0}END".format(delimiter))
         for match in matches:
             print(
-                "{1}{0}{2}{0}{3}{0}{4}".format(
+                "{1}{0}{2}{0}{3}{0}{4}{0}{5}".format(
                 delimiter,
                 match[0],
                 match[1].pattern,
                 match[2].group(0),
-                match[2].span()))
+                match[2].span()[0],
+                match[2].span()[1]))
 
 def motif_to_regex(raw_motif):
     # X to wildcard
