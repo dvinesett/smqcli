@@ -140,13 +140,13 @@ def main(argv=None):
             req = urllib.request.Request(url)
             try:
                 fasta = urllib.request.urlopen(req).read().decode('utf-8')
-            except urllib.error.URLError as e:
-                if args.verbose:
-                    print("error on {0}: {1}".format(an, e.reason))
-                    count_accessions += 1
             except urllib.error.HTTPError as e:
                 if args.verbose:
                     print("{0} error on {1}: {2}".format(e.code, an, e.reason))
+                    count_accessions += 1
+            except urllib.error.URLError as e:
+                if args.verbose:
+                    print("error on {0}: {1}".format(an, e.reason))
                     count_accessions += 1
             else:
                 add_fasta_to_sequences(fasta, sequences)
