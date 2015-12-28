@@ -77,6 +77,7 @@ def main(argv=None):
         nargs='*',
         help='NOT IMPLEMENTED. Will output to file in .csv format.',
         metavar='FILENAME')
+    # TODO: move from output group to regular option
     output_group.add_argument(
         '-d', '--delimiter',
         default='\t',
