@@ -84,12 +84,12 @@ def main(argv=None):
     args = parser.parse_args()
 
     if (args.protein is False and
-                args.nucleotide is False):
+            args.nucleotide is False):
         args.protein = True
 
     if (args.raw_sequence is None and
-                args.ifile is None and
-                args.accession is None):
+            args.ifile is None and
+            args.accession is None):
         # Get the argument names for input_group and format for error.
         input_arg_names = []
         for store_action in input_group._group_actions:
@@ -99,7 +99,7 @@ def main(argv=None):
                         '(' + ' | '.join(input_arg_names) + ')'))
 
     if (args.ofile is None and
-                args.standard is False):
+            args.standard is False):
         args.standard = True
 
     sequences = {}  # dictionary where {key: value} is {accession_number: sequence}
