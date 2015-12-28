@@ -6,12 +6,9 @@ import time
 import urllib.error
 import urllib.request
 
-# TODO: translate nucleotides to protien (all 6 frames) for querying similar to tblastn
+# TODO: translate nucleotides to protein (all 6 frames) for querying similar to tblastn
 # TODO: output option for saving results file
 # TODO: output option for displaying results, output delimiter
-
-# maybe add fasta validation or at the very least more friendly errors
-
 
 def main(argv=None):
     parser = argparse.ArgumentParser(
@@ -27,7 +24,7 @@ def main(argv=None):
     sequence_type_group.add_argument(
         '-p', '--protein',
         action='store_true',
-        help='Sequences and motifs are read as protiens. This option ' + \
+        help='Sequences and motifs are read as proteins. This option ' + \
              'is mutually exclusive to "-n"')
     sequence_type_group.add_argument(
         '-n', '--nucleotide',
@@ -55,15 +52,15 @@ def main(argv=None):
         '-i', '--ifile', '--inputfile', '--input-file', '--fasta',
         nargs='*',
         help='File containing fasta formatted sequence. ' + \
-             'Multiple files should be seperated by commas or spaces. ' + \
+             'Multiple files should be separated by commas or spaces. ' + \
              '*Commas in file names will cause unintended results.*',
         metavar='FILENAME')
     input_group.add_argument(
         '-a', '--accession',
         nargs='*',
-        help='GenBank acessions number(s) will be pulled from NCBI. ' + \
+        help='GenBank accession number(s) will be pulled from NCBI. ' + \
              'GI numbers (genInfo Identifier) also work. Multiple' + \
-             'accession numbers should be seperated by commas or spaces.')
+             'accession numbers should be separated by commas or spaces.')
 
     output_group = parser.add_argument_group(
         title='output group')
@@ -82,7 +79,7 @@ def main(argv=None):
         default='\t',
         help='This will be the delimiter for output. Special ' + \
         ' characters must be escaped. The default is \\t (tab). ' + \
-        'For escaped charcters such as tab, use the syntax $\'\\t\'')
+        'For escaped characters such as tab, use the syntax $\'\\t\'')
     args = parser.parse_args()
 
     if (args.protien is False and
