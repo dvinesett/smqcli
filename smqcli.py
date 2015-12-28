@@ -26,7 +26,7 @@ def main(argv=None):
 
     sequence_type_group = parser.add_mutually_exclusive_group(required=False)
     sequence_type_group.add_argument(
-        '-p', '--protien',
+        '-p', '--protein',
         action='store_true',
         help='Sequences and motifs are read as protiens. This option ' + \
              'is mutually exclusive to "-n"')
@@ -34,7 +34,7 @@ def main(argv=None):
         '-n', '--nucleotide',
         action='store_true',
         help='NOT IMPLEMENTED. Sequences and motifs are read as nucleotides. ' + \
-             'This option is mutally exclusive to "-p"')
+             'This option is mutually exclusive to "-p"')
 
     option_group = parser.add_mutually_exclusive_group(required=False)
     option_group.add_argument(
@@ -57,7 +57,7 @@ def main(argv=None):
         nargs='*',
         help='File containing fasta formatted sequence. ' + \
              'Multiple files should be seperated by commas or spaces. ' + \
-             '*Commas in filenames will cause unintended results.*',
+             '*Commas in file names will cause unintended results.*',
         metavar='FILENAME')
     input_group.add_argument(
         '-a', '--accession',
