@@ -158,6 +158,7 @@ def main(argv=None):
 
     for motif in compiled_motifs:
         for key in sequences.keys():
+            # TODO: overlapping results
             for hit in motif.finditer(sequences[key]):
                 # TODO: replace 'matches' with object
                 matches.append([key, motif, hit])
