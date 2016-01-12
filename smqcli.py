@@ -108,7 +108,7 @@ def main(argv=None):
 
     # prep motifs
     compiled_motifs = []
-    for raw_motif in args.motifs.split(','):
+    for raw_motif in args.motifs.split():
         compiled_motifs.append(motif_to_regex(raw_motif))
 
     # prep sequences
