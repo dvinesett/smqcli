@@ -169,7 +169,8 @@ def main(argv=None):
                 "{1}{0}{2}{0}{3}{0}{4}{0}{5}".format(
                         delimiter,
                         match[0],
-                        match[1].pattern,
+                        # slicing is to get rid of (?=()) around motif
+                        match[1].pattern[4:-2],
                         match[2].group(1),
                         match[2].span()[0],
                         match[2].span()[1]))
