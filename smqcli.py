@@ -84,12 +84,12 @@ def main(argv=None):
     args = parser.parse_args()
 
     if (args.protein is False and
-            args.nucleotide is False):
+                args.nucleotide is False):
         args.protein = True
 
     if (args.raw_sequence is None and
-            args.ifile is None and
-            args.accession is None):
+                args.ifile is None and
+                args.accession is None):
         # Get the argument names for input_group and format for error.
         input_arg_names = []
         for store_action in input_group._group_actions:
@@ -99,7 +99,7 @@ def main(argv=None):
                         '(' + ' | '.join(input_arg_names) + ')'))
 
     if (args.ofile is None and
-            args.standard is False):
+                args.standard is False):
         args.standard = True
 
     sequences = {}  # dictionary where {key: value} is {accession_number: sequence}
@@ -132,8 +132,8 @@ def main(argv=None):
             num_accessions = len(split_args(args.accession))
             count_accessions = 1
             print(
-                'Searching entrez for accession number. Will wait 0.5s ' +
-                'between each search so entrez server doesn\'t get angry')
+                    'Searching entrez for accession number. Will wait 0.5s ' +
+                    'between each search so entrez server doesn\'t get angry')
         for an in split_args(args.accession):
             url = 'http://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi' + \
                   '?db=nuccore&rettype=fasta&id=' + an
@@ -167,13 +167,13 @@ def main(argv=None):
     if not args.quiet:
         for match in matches:
             print(
-                "{1}{0}{2}{0}{3}{0}{4}{0}{5}".format(
-                        delimiter,
-                        match[0],
-                        match[1].pattern,
-                        match[2].group(0),
-                        match[2].span()[0],
-                        match[2].span()[1]))
+                    "{1}{0}{2}{0}{3}{0}{4}{0}{5}".format(
+                            delimiter,
+                            match[0],
+                            match[1].pattern,
+                            match[2].group(0),
+                            match[2].span()[0],
+                            match[2].span()[1]))
 
 
 def motif_to_regex(raw_motif):
