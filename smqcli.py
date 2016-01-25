@@ -202,5 +202,96 @@ def add_fasta_to_sequences(fasta, sequences):
         sequences[desc] = sequence
 
 
+class _Motif:
+    def __init__(self, pattern: _Pattern):
+        self.pattern = pattern
+
+
+class _Pattern:
+    def __init__(self):
+        pass
+
+
+class _Subpattern:
+    def __init__(self, min_, max_):
+        self.min = min_
+        self.max = max_
+
+    def __repr__(self):
+        if min and max == 1:
+            return str(self)
+        if min == max:
+            return "{0}={1}=".format(str(self), max)
+        else:
+            return "{0}={1},{2}=".format(str(self), min, max)
+
+    def match(self, s: str):
+        raise NotImplementedError("Implemented in subclasses.")
+
+
+class _CharSubpattern(_Subpattern):
+    def __init__(self, char_: str):
+        super().__init__(1, 1)
+        if len(char_) == 1:
+            self.char = char_
+        else:
+            raise ValueError("'char_' is a str but must have a length of 1.")
+
+    def match(self, sequence: str):
+        raise NotImplementedError("not implemented yet")
+
+
+class _WildcardSubpattern(_Subpattern):
+    def __init__(self):
+        super().__init__(1, 1)
+
+    def __str__(self):
+        return 'x'
+
+    def match(self, sequence: str):
+        raise NotImplementedError("not implemented yet")
+
+
+# includes [] and {}
+class _ChoiceSubpattern(_Subpattern):
+    def __init__(self, choices_: list, includes_=True):
+        super().__init__(1, 1)
+        self.choices = choices_
+        self.includes = includes_
+
+    def __str__(self):
+        if self.includes:
+            # [x]
+            return "[{0}]".format(self.choices)
+        else:
+            # {x}
+            return "\{{0}\}".format(self.choices)
+
+    def match(self, sequence: str):
+        raise NotImplementedError("not implemented yet")
+
+
+class _RangeSubpattern(_Subpattern):
+    def __init__(self, subpattern, range_: slice):
+        if range_.step or range_.step != 1:
+            raise ValueError("'range_.step' should be 1 or None.")
+        min_range = subpattern.min * range_.start
+        max_range = subpattern.max * range_.stop
+        super().__init__(min_range, max_range)
+        self.subpattern = subpattern
+        self.range = range_
+
+    def __str__(self):
+        if self.range.start:
+            # x(2,5)
+            return "{0}({1},{2})".format(self.subpattern, self.range.start, self.range.stop)
+        else:
+            # x(5)
+            return "{0}({1})".format(self.subpattern, self.range.stop)
+
+    def match(self, sequence: str):
+        raise NotImplementedError("not implemented yet")
+
+
 if __name__ == "__main__":
     main()
