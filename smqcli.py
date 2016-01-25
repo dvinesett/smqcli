@@ -158,7 +158,6 @@ def main(argv=None):
 
     for motif in compiled_motifs:
         for key in sequences.keys():
-            # TODO: overlapping results
             for hit in motif.finditer(sequences[key]):
                 # TODO: replace 'matches' with object
                 matches.append([key, motif, hit])
@@ -171,7 +170,7 @@ def main(argv=None):
                         delimiter,
                         match[0],
                         match[1].pattern,
-                        match[2].group(0),
+                        match[2].group(1),
                         match[2].span()[0],
                         match[2].span()[1]))
 
@@ -179,7 +178,10 @@ def main(argv=None):
 def motif_to_regex(raw_motif):
     # X to wildcard
     motif = re.sub('[Xx]', '.', raw_motif)  # X to wildcard
-    return re.compile(motif, re.IGNORECASE)
+    # Looks for overlapping results. I benchmarked it with a couple of use
+    # cases and it only took a 10% performance hit
+    # TODO: get rid of '(?=(x))' bit in the motif column of output
+    return re.compile(r'(?=({0}))'.format(motif), re.IGNORECASE)
 
 
 def split_args(arg_list):
