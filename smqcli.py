@@ -257,7 +257,7 @@ class _Pattern:
                         raise ValueError("Invalid motif. Characters in brace starting at "
                                          "index {0} must be included in {1}".format(
                                             i, PROTEIN_CHARS_STR))
-                self.subpatterns.append(_ChoiceSubpattern(choices, True))
+                self.subpatterns.append(_ChoiceSubpattern(choices, False))
                 i = end + 1
             # range ()
             elif char == '(':
