@@ -215,7 +215,7 @@ def add_fasta_to_sequences(fasta, sequences):
 
 class _Pattern:
     def __init__(self, raw_motif: str):
-        self.sequence = []
+        self.subpatterns = []
         raw_motif = raw_motif.upper()
         i = 0
         # for char in list(raw_motif.upper()):
@@ -223,11 +223,11 @@ class _Pattern:
             char = raw_motif[i]
             # chars
             if char in PROTEIN_CHARS:
-                self.sequence.append(_CharSubpattern(char))
+                self.subpatterns.append(_CharSubpattern(char))
                 i += 1
             # wildcard .X
             elif char == '.' or char == 'X':
-                self.sequence.append(_WildcardSubpattern())
+                self.subpatterns.append(_WildcardSubpattern())
                 i += 1
             # choice []
             elif char == '[':
@@ -242,7 +242,7 @@ class _Pattern:
                         raise ValueError("Invalid motif. Characters in bracket starting at "
                                          "index {0} must be included in {1}".format(
                                             i, PROTEIN_CHARS_STR))
-                self.sequence.append(_ChoiceSubpattern(choices, True))
+                self.subpatterns.append(_ChoiceSubpattern(choices, True))
                 i = end + 1
             # not choice {}
             elif char == '{':
@@ -257,7 +257,7 @@ class _Pattern:
                         raise ValueError("Invalid motif. Characters in brace starting at "
                                          "index {0} must be included in {1}".format(
                                             i, PROTEIN_CHARS_STR))
-                self.sequence.append(_ChoiceSubpattern(choices, True))
+                self.subpatterns.append(_ChoiceSubpattern(choices, True))
                 i = end + 1
             # range ()
             elif char == '(':
@@ -269,7 +269,7 @@ class _Pattern:
                     raise ValueError("Invalid motif. Could not find a closing parentheses ')'")
 
                 try:
-                    subpattern = self.sequence.pop()
+                    subpattern = self.subpatterns.pop()
                 except IndexError:
                     raise ValueError("Invalid motif. Must have a subpattern before a range '()'")
 
@@ -280,16 +280,16 @@ class _Pattern:
 
                 # {x,y}
                 if range_groups[0] is not None and range_groups[1] is not None and range_groups[2] is not None:
-                    self.sequence.append(_RangeSubpattern(subpattern, slice(range_groups[0], range_groups[2])))
+                    self.subpatterns.append(_RangeSubpattern(subpattern, slice(range_groups[0], range_groups[2])))
                 # {,y}
                 elif range_groups[0] is None and range_groups[1] is not None and range_groups[2] is not None:
-                    self.sequence.append(_RangeSubpattern(subpattern, slice(0, range_groups[2])))
+                    self.subpatterns.append(_RangeSubpattern(subpattern, slice(0, range_groups[2])))
                 # {x,}
                 elif range_groups[0] is not None and range_groups[1] is not None and range_groups[2] is None:
-                    self.sequence.append(_RangeSubpattern(subpattern, slice(range_groups[0], None)))
+                    self.subpatterns.append(_RangeSubpattern(subpattern, slice(range_groups[0], None)))
                 # {x}
                 elif range_groups[0] is not None and range_groups[1] is None and range_groups[2] is None:
-                    self.sequence.append(_RangeSubpattern(subpattern, slice(range_groups[0])))
+                    self.subpatterns.append(_RangeSubpattern(subpattern, slice(range_groups[0])))
                 else:
                     raise NotImplementedError("The developer doesn't think you should be here. "
                                               "Contact him to rub it in.")
@@ -299,7 +299,7 @@ class _Pattern:
                                           "Contact him to rub it in.")
 
     def __str__(self):
-        return str([str(subpattern) for subpattern in self.sequence])
+        return str([str(subpattern) for subpattern in self.subpatterns])
 
 
 class _Subpattern:
