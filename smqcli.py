@@ -6,10 +6,17 @@ import time
 import urllib.error
 import urllib.request
 
-
 # TODO: translate nucleotides to protein (all 6 frames) for querying similar to tblastn
 # TODO: output option for saving results file
 # TODO: output option for displaying results, output delimiter
+
+PROTEIN_CHARS = [
+    'A', 'R', 'N', 'D', 'B', 'C', 'E', 'Q',
+    'Z', 'G', 'H', 'I', 'L', 'K', 'M', 'F',
+    'P', 'S', 'T', 'W', 'Y', 'V'
+]
+PROTEIN_CHARS_STR = ''.join(PROTEIN_CHARS)
+
 
 def main(argv=None):
     parser = argparse.ArgumentParser(
@@ -182,6 +189,10 @@ def motif_to_regex(raw_motif):
     return re.compile(motif, re.IGNORECASE)
 
 
+def motif_to_pattern(raw_motif):
+    return _Pattern(raw_motif)
+
+
 def split_args(arg_list):
     # split args on comma
     if len(arg_list) == 1:
@@ -202,28 +213,99 @@ def add_fasta_to_sequences(fasta, sequences):
         sequences[desc] = sequence
 
 
-class _Motif:
-    def __init__(self, pattern: _Pattern):
-        self.pattern = pattern
-
-
 class _Pattern:
-    def __init__(self):
-        pass
+    def __init__(self, raw_motif: str):
+        self.sequence = []
+        raw_motif = raw_motif.upper()
+        i = 0
+        # for char in list(raw_motif.upper()):
+        while i < len(raw_motif):
+            char = raw_motif[i]
+            # chars
+            if char in PROTEIN_CHARS:
+                self.sequence.append(_CharSubpattern(char))
+                i += 1
+            # wildcard .X
+            elif char == '.' or char == 'X':
+                self.sequence.append(_WildcardSubpattern())
+                i += 1
+            # choice []
+            elif char == '[':
+                beg = i + 1
+                try:
+                    end = i + raw_motif[i:].index(']')
+                except ValueError:
+                    raise ValueError("Invalid motif. Could not find a closing bracket ']'")
+                choices = list(raw_motif[beg:end])
+                for choice in choices:
+                    if choice not in PROTEIN_CHARS:
+                        raise ValueError("Invalid motif. Characters in bracket starting at "
+                                         "index {0} must be included in {1}".format(
+                                            i, PROTEIN_CHARS_STR))
+                self.sequence.append(_ChoiceSubpattern(choices, True))
+                i = end + 1
+            # not choice {}
+            elif char == '{':
+                beg = i + 1
+                try:
+                    end = i + raw_motif[i:].index('}')
+                except ValueError:
+                    raise ValueError("Invalid motif. Could not find a closing brace '}'")
+                choices = list(raw_motif[beg:end])
+                for choice in choices:
+                    if choice not in PROTEIN_CHARS:
+                        raise ValueError("Invalid motif. Characters in brace starting at "
+                                         "index {0} must be included in {1}".format(
+                                            i, PROTEIN_CHARS_STR))
+                self.sequence.append(_ChoiceSubpattern(choices, True))
+                i = end + 1
+            # range ()
+            elif char == '(':
+                beg = i + 1
+
+                try:
+                    end = i + raw_motif[i:].index(')')
+                except ValueError:
+                    raise ValueError("Invalid motif. Could not find a closing parentheses ')'")
+
+                try:
+                    subpattern = self.sequence.pop()
+                except IndexError:
+                    raise ValueError("Invalid motif. Must have a subpattern before a range '()'")
+
+                try:
+                    range_groups = re.match(r"^(\d+)?(,)?(\d+)?$", raw_motif[beg:end]).groups()
+                except AttributeError:
+                    raise ValueError("Invalid motif. Range syntax must follow: 'x', 'x,y', 'x,', or ',y'")
+
+                # {x,y}
+                if range_groups[0] is not None and range_groups[1] is not None and range_groups[2] is not None:
+                    self.sequence.append(_RangeSubpattern(subpattern, slice(range_groups[0], range_groups[2])))
+                # {,y}
+                elif range_groups[0] is None and range_groups[1] is not None and range_groups[2] is not None:
+                    self.sequence.append(_RangeSubpattern(subpattern, slice(0, range_groups[2])))
+                # {x,}
+                elif range_groups[0] is not None and range_groups[1] is not None and range_groups[2] is None:
+                    self.sequence.append(_RangeSubpattern(subpattern, slice(range_groups[0], None)))
+                # {x}
+                elif range_groups[0] is not None and range_groups[1] is None and range_groups[2] is None:
+                    self.sequence.append(_RangeSubpattern(subpattern, slice(range_groups[0])))
+                else:
+                    raise NotImplementedError("The developer doesn't think you should be here. "
+                                              "Contact him to rub it in.")
+                i = end + 1
+            else:
+                raise NotImplementedError("The developer doesn't think you should be here. "
+                                          "Contact him to rub it in.")
+
+    def __str__(self):
+        return str([str(subpattern) for subpattern in self.sequence])
 
 
 class _Subpattern:
     def __init__(self, min_, max_):
         self.min = min_
         self.max = max_
-
-    def __repr__(self):
-        if min and max == 1:
-            return str(self)
-        if min == max:
-            return "{0}={1}=".format(str(self), max)
-        else:
-            return "{0}={1},{2}=".format(str(self), min, max)
 
     def match(self, s: str):
         raise NotImplementedError("Implemented in subclasses.")
@@ -236,6 +318,9 @@ class _CharSubpattern(_Subpattern):
             self.char = char_
         else:
             raise ValueError("'char_' is a str but must have a length of 1.")
+
+    def __str__(self):
+        return self.char
 
     def match(self, sequence: str):
         raise NotImplementedError("not implemented yet")
@@ -273,8 +358,8 @@ class _ChoiceSubpattern(_Subpattern):
 
 class _RangeSubpattern(_Subpattern):
     def __init__(self, subpattern, range_: slice):
-        if range_.step or range_.step != 1:
-            raise ValueError("'range_.step' should be 1 or None.")
+        if range_.step is not None and range_.step != 1:
+            raise ValueError("'range_.step' is '{0}'. It should be 1 or None.".format(range_.step))
         min_range = subpattern.min * range_.start
         max_range = subpattern.max * range_.stop
         super().__init__(min_range, max_range)
