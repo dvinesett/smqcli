@@ -9,6 +9,13 @@ import urllib.request
 # TODO: translate nucleotides to protein (all 6 frames) for querying similar to tblastn
 # TODO: output option for saving results file
 # TODO: output option for displaying results, output delimiter
+# TODO: add option for regular expression queries rather than custom PROSITE-like one
+#       as well as regular output
+# TODO: reduce memory overhead on regex search by matching against [i:something] rather than [i:] ...
+#       ... in various places
+
+# PACKAGE_NAME = sys.modules[__name__]
+PACKAGE_NAME = 'smqcli'
 
 PROTEIN_CHARS = [
     'A', 'R', 'N', 'D', 'B', 'C', 'E', 'Q',
@@ -114,9 +121,9 @@ def main(argv=None):
     delimiter = args.delimiter
 
     # prep motifs
-    compiled_motifs = []
+    compiled_patterns = []
     for raw_motif in args.motifs.split():
-        compiled_motifs.append(motif_to_regex(raw_motif))
+        compiled_patterns.append(motif_to_pattern(raw_motif))
 
     # prep sequences
     if args.raw_sequence:
@@ -163,24 +170,26 @@ def main(argv=None):
                     print("[%s/%s] %s " % (count_accessions, num_accessions, an))
                     count_accessions += 1
 
-    for motif in compiled_motifs:
+    for pattern in compiled_patterns:
+        # useful for debugging
+        # print(",".join([str(subpattern) for subpattern in pattern.subpatterns]) +
+        #       "; len: " + str(len(pattern.subpatterns)))
         for key in sequences.keys():
-            # TODO: overlapping results
-            for hit in motif.finditer(sequences[key]):
-                # TODO: replace 'matches' with object
-                matches.append([key, motif, hit])
+            for hit in pattern.findall(sequences[key]):
+                # TODO: don't use this tuple any more. maybe add as attributes to _Match
+                matches.append((key, pattern, hit))
 
     # TODO: add arguments for output format. e.g. --format=id,motif,hit,location
     if not args.quiet:
         for match in matches:
-            print(
-                    "{1}{0}{2}{0}{3}{0}{4}{0}{5}".format(
-                            delimiter,
-                            match[0],
-                            match[1].pattern,
-                            match[2].group(0),
-                            match[2].span()[0],
-                            match[2].span()[1]))
+            print("{1}{0}{2}{0}{3}{0}{4}{0}{5}".format(
+                delimiter,
+                match[0],
+                "".join([str(subpattern) for subpattern in match[1].subpatterns]),
+                match[2].string,
+                match[2].start,
+                match[2].end
+            ))
 
 
 def motif_to_regex(raw_motif):
@@ -218,7 +227,6 @@ class _Pattern:
         self.subpatterns = []
         raw_motif = raw_motif.upper()
         i = 0
-        # for char in list(raw_motif.upper()):
         while i < len(raw_motif):
             char = raw_motif[i]
             # chars
@@ -236,7 +244,7 @@ class _Pattern:
                     end = i + raw_motif[i:].index(']')
                 except ValueError:
                     raise ValueError("Invalid motif. Could not find a closing bracket ']'")
-                choices = list(raw_motif[beg:end])
+                choices = set(raw_motif[beg:end])
                 for choice in choices:
                     if choice not in PROTEIN_CHARS:
                         raise ValueError("Invalid motif. Characters in bracket starting at "
@@ -251,7 +259,7 @@ class _Pattern:
                     end = i + raw_motif[i:].index('}')
                 except ValueError:
                     raise ValueError("Invalid motif. Could not find a closing brace '}'")
-                choices = list(raw_motif[beg:end])
+                choices = set(raw_motif[beg:end])
                 for choice in choices:
                     if choice not in PROTEIN_CHARS:
                         raise ValueError("Invalid motif. Characters in brace starting at "
@@ -278,28 +286,81 @@ class _Pattern:
                 except AttributeError:
                     raise ValueError("Invalid motif. Range syntax must follow: 'x', 'x,y', 'x,', or ',y'")
 
+                # init rgX variables so I don't have to worry about NameError
+                rg0, rg1, rg2 = None, None, None
+
+                # range_groups values from str to int
+                try:
+                    rg0 = int(range_groups[0])
+                except TypeError:
+                    pass
+                rg1 = range_groups[1]
+                try:
+                    rg2 = int(range_groups[2])
+                except TypeError:
+                    pass
+
                 # {x,y}
-                if range_groups[0] is not None and range_groups[1] is not None and range_groups[2] is not None:
-                    self.subpatterns.append(_RangeSubpattern(subpattern, slice(range_groups[0], range_groups[2])))
+                if rg0 is not None and rg1 is not None and rg2 is not None:
+                    self.subpatterns.append(_RangeSubpattern(subpattern, slice(rg0, rg2)))
                 # {,y}
-                elif range_groups[0] is None and range_groups[1] is not None and range_groups[2] is not None:
-                    self.subpatterns.append(_RangeSubpattern(subpattern, slice(0, range_groups[2])))
+                elif rg0 is None and rg1 is not None and rg2 is not None:
+                    self.subpatterns.append(_RangeSubpattern(subpattern, slice(0, rg2)))
                 # {x,}
-                elif range_groups[0] is not None and range_groups[1] is not None and range_groups[2] is None:
-                    self.subpatterns.append(_RangeSubpattern(subpattern, slice(range_groups[0], None)))
+                elif rg0 is not None and rg1 is not None and rg2 is None:
+                    raise TypeError("Don't search for range of patterns {0} in sequence with unbound stop.".format(
+                        (rg0, rg2)))
+                    # self.subpatterns.append(_RangeSubpattern(subpattern, slice(range_groups[0], None)))
                 # {x}
-                elif range_groups[0] is not None and range_groups[1] is None and range_groups[2] is None:
-                    self.subpatterns.append(_RangeSubpattern(subpattern, slice(range_groups[0])))
+                elif rg0 is not None and rg1 is None and rg2 is None:
+                    self.subpatterns.append(_RangeSubpattern(subpattern, slice(rg0)))
                 else:
                     raise NotImplementedError("The developer doesn't think you should be here. "
                                               "Contact him to rub it in.")
                 i = end + 1
             else:
-                raise NotImplementedError("The developer doesn't think you should be here. "
-                                          "Contact him to rub it in.")
+                raise ValueError("Invalid sequence expression. The input received is '{0}'. This error commonly "
+                                 "occurs when the sequence expression is not contained by quotes".format(raw_motif))
 
-    def __str__(self):
-        return str([str(subpattern) for subpattern in self.subpatterns])
+    def __repr__(self):
+        return "<{0}._Pattern object; {1}>".format(PACKAGE_NAME, ([str(subpattern) for subpattern in self.subpatterns]))
+
+    def __len__(self):
+        return len(self.subpatterns)
+
+    def findall(self, matching_string):
+        """ Return list of match objects for a Pattern in a sequence
+        :param matching_string:
+        :return: list of match objects
+        """
+        matches = []
+        # loop through matching_string
+        char_index = 0
+        while char_index < len(matching_string) - len(self.subpatterns):
+            submatches = []
+            submatches_length = 0
+            pattern_index = 0
+            while pattern_index < len(self.subpatterns):
+                # this is useful for debugging
+                # print("chr {0}\tchrstr {1}\tmch {2}\tmchstr {3}\tptn {4}\tptnstr {5}".format(
+                #         char_index, matching_string[char_index], char_index + submatches_length,
+                #         matching_string[char_index + submatches_length], pattern_index,
+                #         self.subpatterns[pattern_index]))
+                match = self.subpatterns[pattern_index].match(
+                    matching_string[(char_index + submatches_length):])
+                if not match:
+                    submatches.clear()
+                    break
+                submatches.append(match)
+                submatches_length += len(match)
+                pattern_index += 1
+
+            if pattern_index == len(self.subpatterns):
+                start = char_index
+                stop = char_index + submatches_length
+                matches.append(_Match(matching_string[start:stop], start, stop))
+            char_index += 1
+        return matches
 
 
 class _Subpattern:
@@ -323,7 +384,10 @@ class _CharSubpattern(_Subpattern):
         return self.char
 
     def match(self, sequence: str):
-        raise NotImplementedError("not implemented yet")
+        if sequence[0] != self.char:
+            return None
+        else:
+            return _Match(self.char, 0, 1)
 
 
 class _WildcardSubpattern(_Subpattern):
@@ -334,48 +398,100 @@ class _WildcardSubpattern(_Subpattern):
         return 'x'
 
     def match(self, sequence: str):
-        raise NotImplementedError("not implemented yet")
+        if sequence == '':
+            return None
+        return _Match(sequence[0], 0, 1)
 
 
 # includes [] and {}
 class _ChoiceSubpattern(_Subpattern):
-    def __init__(self, choices_: list, includes_=True):
+    def __init__(self, choices_: set, includes_=True):
         super().__init__(1, 1)
         self.choices = choices_
         self.includes = includes_
 
     def __str__(self):
+        choices_str = "".join([str(choice) for choice in self.choices])
         if self.includes:
             # [x]
-            return "[{0}]".format(self.choices)
+            return "[{0}]".format(choices_str)
         else:
             # {x}
-            return "\{{0}\}".format(self.choices)
+            return "\{{0}\}".format(choices_str)
 
     def match(self, sequence: str):
-        raise NotImplementedError("not implemented yet")
+        char = sequence[0]
+        if self.includes:
+            if char in self.choices:
+                return _Match(char, 0, 1)
+        elif not self.includes:
+            if char not in self.choices:
+                return _Match(char, 0, 1)
+        else:
+            return None
 
 
 class _RangeSubpattern(_Subpattern):
     def __init__(self, subpattern, range_: slice):
+        # TODO: refactor by implementing constants for each range type:
         if range_.step is not None and range_.step != 1:
             raise ValueError("'range_.step' is '{0}'. It should be 1 or None.".format(range_.step))
-        min_range = subpattern.min * range_.start
-        max_range = subpattern.max * range_.stop
-        super().__init__(min_range, max_range)
         self.subpattern = subpattern
-        self.range = range_
+        self.range_slice = range_
+        min_range = None
+        max_range = None
+        if self.range_slice.start:
+            min_range = subpattern.min * self.range_slice.start
+        if self.range_slice.stop:
+            max_range = subpattern.max * self.range_slice.stop
+        if not min_range and not max_range:
+            raise TypeError("Empty slice. This shouldn't happen. Please contact the developer.")
+        elif not min_range and max_range:
+            super().__init__(None, max_range)
+            self.range_max_len = max_range
+        elif min_range and not max_range:
+            # self.range_max_len = None
+            # super().__init__(min_range, None)
+            raise NotImplementedError("Don't search for a range of patterns in sequence with unbound stop.")
+        else:
+            self.range_max_len = max_range
+            super().__init__(min_range, max_range)
 
     def __str__(self):
-        if self.range.start:
+        if self.range_slice.start:
             # x(2,5)
-            return "{0}({1},{2})".format(self.subpattern, self.range.start, self.range.stop)
+            return "{0}({1},{2})".format(self.subpattern, self.range_slice.start, self.range_slice.stop)
         else:
             # x(5)
-            return "{0}({1})".format(self.subpattern, self.range.stop)
+            return "{0}({1})".format(self.subpattern, self.range_slice.stop)
 
     def match(self, sequence: str):
-        raise NotImplementedError("not implemented yet")
+        i = 0
+        match_str = ''
+        total_match_len = 0
+        while i < self.range_max_len:
+            match = self.subpattern.match(sequence[i:])
+            if not match:
+                return None
+            match_str += match.string
+            match_range = match.end - match.start
+            total_match_len += match_range
+            i += 1
+        return _Match(sequence[0:total_match_len], 0, i)
+
+
+class _Match:
+    def __init__(self, string_: str, start_: int, end_: int):
+        self.string = string_
+        self.start = start_
+        self.end = end_
+
+    def __str__(self):
+        return "<{0}._Match object; span={1}, match={2}>".format(
+            PACKAGE_NAME, (self.start, self.end), self.string)
+
+    def __len__(self):
+        return self.end - self.start
 
 
 if __name__ == "__main__":
