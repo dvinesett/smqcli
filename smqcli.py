@@ -20,7 +20,8 @@ def main(argv=None):
     parser.add_argument(
         'motifs',
         help='Supports python\'s regular expression formatting. ' +
-             '"X" is also substituted as a wildcard.')
+             '"X" is also substituted as a wildcard. Regular expression ' +
+             'groups WILL cause errors with "pretty" matching')
 
     sequence_type_group = parser.add_mutually_exclusive_group(required=False)
     sequence_type_group.add_argument(
