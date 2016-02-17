@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse
+import collections
 import re
 import sys
 import time
@@ -63,12 +64,17 @@ def main(argv=None):
              'GI numbers (genInfo Identifier) also work. Multiple' +
              'accession numbers should be separated by commas or spaces.')
 
+    # TODO: make -s and -S mutually exclusive
     output_group = parser.add_argument_group(
         title='output group')
     output_group.add_argument(
         '-s', '--standard',
         action='store_true',
         help='DEFAULT. Output is sent to stdout.')
+    output_group.add_argument(
+        '-S', '--mute',
+        action='store_true',
+        help='Mute the standard output')
     output_group.add_argument(
         '-o', '--ofile', '--outputfile', '--output-file',
         nargs='*',
@@ -81,6 +87,10 @@ def main(argv=None):
         help='This will be the delimiter for output. Special ' +
              ' characters must be escaped. The default is \\t (tab). ' +
              'For escaped characters such as tab, use the syntax $\'\\t\'')
+    output_group.add_argument(
+        '-V', '--variants',
+        action='store_true',
+        help='Output each variant of the matches along with its frequency.')
     args = parser.parse_args()
 
     if (args.protein is False and
@@ -104,6 +114,7 @@ def main(argv=None):
 
     sequences = {}  # dictionary where {key: value} is {accession_number: sequence}
     matches = []  # list of lists with information on each match. will refactor into Match class
+    match_strs = []
     delimiter = args.delimiter
 
     # prep motifs
@@ -165,8 +176,9 @@ def main(argv=None):
 
     # TODO: add arguments for output format. e.g. --format=id,motif,hit,location
     if not args.quiet:
+        if not args.mute:
+            print('\t'.join('DESCRIPTION MATCH START END FULL_SEQUENCE'.split(' ')))
         for match in matches:
-
             # hide wildcard ranges
             match_str = match[1].pattern[4:-2]
             out_str_list = []
@@ -187,17 +199,22 @@ def main(argv=None):
                 out_str_list.append(original_str[tup[i-1][1]:match[2].span(1)[1]])
                 match_str = ''.join(out_str_list)
             ####################
-
-            print(
-                "{1}{0}{2}{0}{3}{0}{4}{0}{5}".format(
-                    delimiter,
-                    match[0],
-                    # slicing is to get rid of (?=()) around motif
-                    match_str,
-                    match[2].span(1)[0],
-                    match[2].span(1)[1],
-                    match[2].string))
-
+            match_strs.append(match_str)
+            if not args.mute:
+                print(
+                    "{1}{0}{2}{0}{3}{0}{4}{0}{5}".format(
+                        delimiter,
+                        match[0],
+                        # slicing is to get rid of (?=()) around motif
+                        match_str,
+                        match[2].span(1)[0],
+                        match[2].span(1)[1],
+                        match[2].string))
+        counter = collections.Counter(match_strs)
+    if args.variants:
+        print('{1}{0}{2}'.format(delimiter, 'MATCH', 'FREQUENCY'))
+        for key in counter.keys():
+            print("{0}\t{1}".format(key, counter[key]))
 
 
 def motif_to_regex(raw_motif: str):
